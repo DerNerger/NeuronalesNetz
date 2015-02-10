@@ -12,17 +12,15 @@ public class Neuron {
 	
 	//the current state of the neuron
 	private double activationState;
-	private double theta;
 	private double output;
 	
 	//All neurons in the list are connected with this neuron
 	private ArrayList<Neuron> connectedNeurons;
 	
 	//constructor
-	public Neuron(int index, double activationState, double theta) {
+	public Neuron(int index, double activationState) {
 		this.index = index;
 		this.activationState = activationState;
-		this.theta = theta;
 		connectedNeurons = new ArrayList<>();
 	}
 
@@ -30,7 +28,7 @@ public class Neuron {
 		double[] needetWeights = weights.getWeights(connectedNeurons, this);
 		double[] outputs = getOutput(connectedNeurons);
 		double webInput = propagationFunction.propagate(outputs, needetWeights);
-		double nextActivationState = activationFunction.calcActivation(webInput, activationState, theta);
+		double nextActivationState = activationFunction.calcActivation(webInput, activationState);
 		activationState = nextActivationState;
 		output = outputFunction.calcOutput(activationState);
 		return output;
@@ -53,10 +51,6 @@ public class Neuron {
 		this.propagationFunction = propagationFunction;
 	}
 
-	public double getTheta() {
-		return theta;
-	}
-
 	public void setActivationFunction(ActivationFunction activationFunction) {
 		this.activationFunction = activationFunction;
 	}
@@ -74,6 +68,19 @@ public class Neuron {
 	}
 
 	public double getOutput() {
+		if(index==0) return -1;
 		return output;
+	}
+
+	public ArrayList<Neuron> getConnectedNeurons() {
+		return connectedNeurons;
+	}
+	
+	public String toString(){
+		return index+"";
+	}
+
+	public void setOutput(int output) {
+		this.output = output;
 	}
 }
