@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 
 public class TrainingPattern {
 	private double[] tPattern;
@@ -27,5 +29,80 @@ public class TrainingPattern {
 			delta[i] = teachingInput[i] - webOutput[i];
 		}
 		return delta;
+	}
+	
+	public static ArrayList<TrainingPattern> getOrTraining(){
+		ArrayList<TrainingPattern> pattern = new ArrayList<>();
+		{
+			double[] inp = {0,0};
+			double[] result = {0};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		{
+			double[] inp = {1,0};
+			double[] result = {1};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		{
+			double[] inp = {0,1};
+			double[] result = {1};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		{
+			double[] inp = {1,1};
+			double[] result = {1};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		return pattern;
+	}
+	
+	public static ArrayList<TrainingPattern> getAndTraining(){
+		ArrayList<TrainingPattern> pattern = new ArrayList<>();
+		{
+			double[] inp = {0,0};
+			double[] result = {0};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		{
+			double[] inp = {1,0};
+			double[] result = {0};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		{
+			double[] inp = {0,1};
+			double[] result = {0};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		{
+			double[] inp = {1,1};
+			double[] result = {1};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		return pattern;
+	}
+	
+	public static ArrayList<TrainingPattern> getEqTraining(){
+		ArrayList<TrainingPattern> pattern = new ArrayList<>();
+		{
+			double[] inp = {0,0};
+			double[] result = {1};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		{
+			double[] inp = {1,0};
+			double[] result = {0};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		{
+			double[] inp = {0,1};
+			double[] result = {0};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		{
+			double[] inp = {1,1};
+			double[] result = {1};
+			pattern.add(new TrainingPattern(inp, result));
+		}
+		return pattern;
 	}
 }

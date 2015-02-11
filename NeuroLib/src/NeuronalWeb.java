@@ -1,235 +1,146 @@
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
+
 
 public class NeuronalWeb {
-
 	private ArrayList<Neuron> neurons;
-	private ArrayList<Neuron> startNeurons;
+	private ArrayList<InputNeuron> startNeurons;
 	private ArrayList<Neuron> endNeurons;
-	private ConnectionWeights weights;
+	private double[][] weights;
+	private double[] outputs;
+	private PropagationFunction propFun;
+	private ActivationFunction actFun;
+	private OutputFunction outFun;
+	private ActivationOrder order;
 	
-	//functions to calculate the output
-	private PropagationFunction propagationFunction;
-	private ActivationFunction activationFunction;
-	private OutputFunction outputFunction;
-	
-	//function for the order of activation
-	private ActivationOrder activationOrder;
-	
-	//constructor
-	public NeuronalWeb() {
-		setDefaultFunctions();
-		startNeurons = new ArrayList<>();
-		endNeurons = new ArrayList<>();
-	}
-
-	//methods------------------------------------------------------------------
-	public void generateNeuronalWeb(int neuronCount){
+	public NeuronalWeb(int neuronCount){
 		neurons = new ArrayList<>(neuronCount+1);
-		weights = new ConnectionWeights(neuronCount+1);
-		for (int i = 0; i < neuronCount+1; i++) {
-			Neuron newNeuron = new Neuron(i, 0);
-			newNeuron.setActivationFunction(activationFunction);
-			newNeuron.setOutputFunction(outputFunction);
-			newNeuron.setPropagationFunction(propagationFunction);
-			neurons.add(newNeuron);
-		}
-		//add the bias neuron connection
-		Neuron bias = neurons.get(0);
-		bias.setOutput(1);
-		for (int i = 1; i < neurons.size(); i++) {
-			weights.setConnection(0, i, 1);
-			neurons.get(i).addPredecessor(bias);
+		startNeurons = new ArrayList<>(neuronCount+1);
+		endNeurons = new ArrayList<>(neuronCount+1);
+		weights = new double[neuronCount+1][neuronCount+1];
+		outputs = new double[neuronCount+1];
+		initDefaultFunctions();
+		neurons.add(new BiasNeuron(0));
+		for (int i = 1; i < neuronCount+1; i++) {
+			Neuron n = new Neuron(propFun,actFun,outFun,i);
+			neurons.add(n);
 		}
 	}
 	
-	//create new connection 
-	public void setConnection(int sourceIndex, int targetIndex, double weight){
-		if(weights==null || neurons==null) throw new RuntimeException
-			("Noch nicht initialisiert, " +
-			"vorher zuerst generateNeuronalWeb aufrufen");
-		//throws exception if index out of correct range
-		weights.setConnection(sourceIndex, targetIndex, weight); 
-		neurons.get(targetIndex).addPredecessor(neurons.get(sourceIndex));
+	public void addToStart(int neuron){
+		InputNeuron sNeuron = new InputNeuron(propFun,actFun,outFun, neuron);
+		neurons.set(neuron, sNeuron);
+		startNeurons.add(sNeuron);
 	}
 	
-	//set start neurons
-	public void addToStartNeurons(int index){
-		if(neurons == null) throw new RuntimeException("Netz nicht initialisiert" +
-				", bitte zuerst generateNeuronalWeb aufrufen");
-		/*if(!neurons.contains(index))
-			throw new RuntimeException("Neuron mit index "+index+" existiert nicht.");*/
-		startNeurons.add(neurons.get(index));
+	public void addToEnd(int neuron){
+		endNeurons.add(neurons.get(neuron));
 	}
 	
-	//set end neurons
-	public void addToEndNeurons(int index){
-		if(neurons == null) throw new RuntimeException("Netz nicht initialisiert" +
-				", bitte zuerst generateNeuronalWeb aufrufen");
-		/*if(!neurons.contains(index))
-			throw new RuntimeException("Neuron mit index "+index+" existiert nicht.");*/
-		endNeurons.add(neurons.get(index));
-	}
-	
-	//solve the problem input
-	public double[] forwardPropagation(double[] input){
-		if(input.length != startNeurons.size())
-			throw new RuntimeException("Input Vektor hat die falsche Dimension");
-		//set the activation
-		for (int i = 0; i < startNeurons.size(); i++) {
-			startNeurons.get(i).setActivationState(input[i]);
+	public double[] propagate(double[] values){
+		for (int i = 0; i < values.length; i++) {
+			startNeurons.get(i).setStartValue(values[i]);
 		}
-		//propagate through the web
-		ArrayList<Neuron> order = activationOrder.getActivationOrder(this);
-		for (Neuron n : order) {
-			n.propagate(weights);
+		
+		ArrayList<Neuron> ord = order.getActivationOrder(this);
+		for (int i = 0; i < ord.size(); i++) {
+			double[] w = getWeightsFor(i);
+			double o = ord.get(i).propagate(outputs, w, outputs[i]);
+			outputs[i] = o;
 		}
-		//get the output
-		double [] output = new double[endNeurons.size()];
-		for (int i = 0; i < output.length; i++) {
-			output[i] = endNeurons.get(i).getOutput();
+		
+		double[] out = new double[endNeurons.size()];
+		for (int i = 0; i < out.length; i++) {
+			out[i] = outputs[endNeurons.get(i).getIndex()];
 		}
-		return output;
+		return out;
 	}
 	
-	//teaching the web
-	public void backproagation(LinkedList<TrainingPattern> setOfTrainingPattern){
-		for (int aa = 0; aa < 20; aa++) {
-			double teachingRate = 0.08;
-			for(TrainingPattern pattern : setOfTrainingPattern){
-				double[] tPattern = pattern.gettPattern();
-				double[] result = forwardPropagation(tPattern);
-				double[] delta = pattern.getDelta(result);
-				//teaching the web
-				for (int i = 0; i < delta.length; i++) { //all output neuron
-					Neuron outNeuron = endNeurons.get(i);
-					ArrayList<Neuron> connectedNeurons = outNeuron.getConnectedNeurons();
-					//double [] weightsToOutNeuron = weights.getWeights(connectedNeurons, outNeuron);
-					for (int j = 0; j < connectedNeurons.size(); j++) { //for all connections to outNeuron
-						double d = delta[i];
-						double o = connectedNeurons.get(j).getOutput();
-						double deltaWeight = teachingRate * d * o;
-						weights.addWeight(connectedNeurons.get(j).getIndex(),outNeuron.getIndex(),deltaWeight);
-					}
-				}
+	public void learn(ArrayList<TrainingPattern> pattern, int runs, double learnFac){
+		for (int i = 0; i < runs; i++) {
+			for (TrainingPattern p : pattern) {
+				double [] tPattern = p.gettPattern();
+				double[] result = propagate(tPattern);
+				backpropagate(p.getDelta(result), learnFac);
+				System.out.println(this);
 			}
-			System.out.println(this);
 		}
 	}
 	
-	public String toString(){
-		StringBuilder sb = new StringBuilder();
-		sb.append("Gewichte:\n");
-		sb.append(weights.toString());
-		sb.append("StartNeurons:\n");
-		sb.append(startNeurons.toString());
-		sb.append("\nEndNeurons:\n");
-		sb.append(endNeurons.toString());
-		sb.append("\nOutput:\n");
-		for (int i = 0; i < neurons.size(); i++) {
-			Neuron n = neurons.get(i);
-			sb.append(n.getIndex()+":  "+n.getOutput()+"\n");
+	private void backpropagate(double[] delta, double learnFac) {
+		for (int i = 0; i < delta.length; i++) {
+			int omega_index = endNeurons.get(i).getIndex();
+			for (int j = 0; j < outputs.length; j++) {
+				double o = outputs[j];
+				double d = delta[i];
+				double change = learnFac*o*d;
+				weights[j][omega_index] += change;
+			}
 		}
-		return sb.toString();
 	}
 
-	//getters and setters -----------------------------------------------------
-	public void setPropagationFunction(PropagationFunction propagationFunction) {
-		this.propagationFunction = propagationFunction;
+	private double[] getWeightsFor(int neuron){
+		double[] w = new double[weights.length];
+		for (int i = 0; i < w.length; i++) {
+			w[i] = weights[i][neuron];
+		}
+		return w;
 	}
 
-
-
-	public void setActivationFunction(ActivationFunction activationFunction) {
-		this.activationFunction = activationFunction;
-	}
-
-
-
-	public void setOutputFunction(OutputFunction outputFunction) {
-		this.outputFunction = outputFunction;
-	}
-	
-	public ArrayList<Neuron> getNeurons(){
-		return neurons;
-	}
-	
-	//private functions--------------------------------------------------------
-	private void setDefaultFunctions(){
-		propagationFunction = new PropagationFunction() {
-			//weighted sum
+	private void initDefaultFunctions() {
+		propFun = new PropagationFunction(){
 			@Override
 			public double propagate(double[] outputs, double[] weights) {
-				double toReturn = 0;
+				double sum = 0;
 				for (int i = 0; i < weights.length; i++) {
-					toReturn+=outputs[i]*weights[i];
+					sum+=outputs[i]*weights[i];
 				}
-				return toReturn;
+				return sum;
 			}
 		};
-		activationFunction = new ActivationFunction() {
-			/*
-			//Tangens Hyperbolicus
-			@Override
-			public double calcActivation(double webInput, double oldActivation) {
-				double input = webInput+oldActivation; //TODO schwachsinn
-				return Math.tanh(input);
-			}*/
+		actFun = new ActivationFunction(){
 			@Override
 			public double calcActivation(double webInput, double oldActivation) {
 				if(webInput>0) return 1;
 				else return 0;
 			}
 		};
-		outputFunction = new OutputFunction() {
-			//the identity
+		outFun = new OutputFunction(){
 			@Override
 			public double calcOutput(double activationState) {
 				return activationState;
 			}
 		};
-		activationOrder = new ActivationOrder() {
+		order = new ActivationOrder(){
 			@Override
 			public ArrayList<Neuron> getActivationOrder(NeuronalWeb web) {
-				return web.getNeurons();
+				return web.neurons;
 			}
 		};
 	}
 	
+	public String toString(){
+		StringBuilder sb = new StringBuilder();
+		sb.append("Gewichte:\n");
+		for (int i = 0; i < weights.length; i++) {
+			for (int j = 0; j < weights.length; j++) {
+				sb.append(weights[i][j]+"  ");
+			}
+			sb.append("\n");
+		}
+		sb.append("Outputs:\n");
+		for (int i = 0; i < outputs.length; i++) {
+			sb.append("Neuron "+i+": "+outputs[i]+"\n");
+		}
+		return sb.toString();
+	}
+	
 	public static void main(String[] args){
-		NeuronalWeb web = new NeuronalWeb();
-		web.generateNeuronalWeb(3);
-		web.setConnection(1, 3, 1);
-		web.setConnection(2, 3, 1);
-		web.addToStartNeurons(1);
-		web.addToStartNeurons(2);
-		web.addToEndNeurons(3);
-		
+		NeuronalWeb web = new NeuronalWeb(3);
 		System.out.println(web);
-		
-		LinkedList<TrainingPattern> pattern = new LinkedList<>();
-		{ //F or T = T
-			double[] input = {0,1};
-			double[] output = {1};
-			pattern.add(new TrainingPattern(input,output));
-		}
-		{ //T or F = T
-			double[] input = {1,0};
-			double[] output = {1};
-			pattern.add(new TrainingPattern(input,output));
-		}
-		{ //T or T = T
-			double[] input = {1,1};
-			double[] output = {1};
-			pattern.add(new TrainingPattern(input,output));
-		}
-		{ //F or F = F
-			double[] input = {0,0};
-			double[] output = {0};
- 			pattern.add(new TrainingPattern(input,output));
-		}
-		
-		web.backproagation(pattern);
+		web.addToStart(1);
+		web.addToStart(2);
+		web.addToEnd(3);
+		ArrayList<TrainingPattern> pattern = TrainingPattern.getOrTraining();
+		web.learn(pattern, 100, 0.1);
 	}
 }

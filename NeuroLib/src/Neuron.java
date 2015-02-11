@@ -1,86 +1,37 @@
-import java.util.ArrayList;
-
-
 public class Neuron {
-	//functions to calculate the output
-	private PropagationFunction propagationFunction;
-	private ActivationFunction activationFunction;
-	private OutputFunction outputFunction;
-	
-	//the index of the neuron
+	protected PropagationFunction propFun;
+	protected ActivationFunction actFun;
+	protected OutputFunction outFun;
 	private int index;
 	
-	//the current state of the neuron
-	private double activationState;
-	private double output;
-	
-	//All neurons in the list are connected with this neuron
-	private ArrayList<Neuron> connectedNeurons;
-	
-	//constructor
-	public Neuron(int index, double activationState) {
+	public Neuron(PropagationFunction propFun, ActivationFunction actFun,
+			OutputFunction outFun, int index) {
+		this.propFun = propFun;
+		this.actFun = actFun;
+		this.outFun = outFun;
 		this.index = index;
-		this.activationState = activationState;
-		connectedNeurons = new ArrayList<>();
 	}
 
-	public double propagate(ConnectionWeights weights){
-		double[] needetWeights = weights.getWeights(connectedNeurons, this);
-		double[] outputs = getOutput(connectedNeurons);
-		double webInput = propagationFunction.propagate(outputs, needetWeights);
-		double nextActivationState = activationFunction.calcActivation(webInput, activationState);
-		activationState = nextActivationState;
-		output = outputFunction.calcOutput(activationState);
+	public double propagate(double[] outputs, double[] weights, double oldAct){
+		double webInput = propFun.propagate(outputs, weights);
+		double activation = actFun.calcActivation(webInput, oldAct);
+		double output = outFun.calcOutput(activation);
 		return output;
-	}
-
-	private double[] getOutput(ArrayList<Neuron> connectedNeurons){
-		double [] output = new double[connectedNeurons.size()];
-		for (int i = 0; i < output.length; i++) {
-			output[i] = connectedNeurons.get(i).getOutput();
-		}
-		return output;
-	}
-	
-	public void addPredecessor(Neuron n){
-		connectedNeurons.add(n);
-	}
-
-	//getters and setters------------------------------------------------------
-	public void setPropagationFunction(PropagationFunction propagationFunction) {
-		this.propagationFunction = propagationFunction;
-	}
-
-	public void setActivationFunction(ActivationFunction activationFunction) {
-		this.activationFunction = activationFunction;
-	}
-
-	public void setOutputFunction(OutputFunction outputFunction) {
-		this.outputFunction = outputFunction;
-	}
-
-	public void setActivationState(double activationState) {
-		this.activationState = activationState;
 	}
 	
 	public int getIndex() {
 		return index;
 	}
 
-	public double getOutput() {
-		if(index==0) return -1;
-		return output;
+	public void setPropFun(PropagationFunction propFun) {
+		this.propFun = propFun;
 	}
 
-	public ArrayList<Neuron> getConnectedNeurons() {
-		return connectedNeurons;
-	}
-	
-	public String toString(){
-		return index+"";
+	public void setActFun(ActivationFunction actFun) {
+		this.actFun = actFun;
 	}
 
-	public void setOutput(int output) {
-		this.output = output;
+	public void setOutFun(OutputFunction outFun) {
+		this.outFun = outFun;
 	}
 }
